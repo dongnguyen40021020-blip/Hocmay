@@ -1,0 +1,73 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import KFold
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.metrics import mean_squared_error
+
+def main():
+    print("=" * 70)
+    print(" BAI TOAN DINH GIA NHA DAT: HOI QUY DA THUC VA K-FOLD CROSS-VALIDATION")
+    print("=" * 70)
+
+    # 1. Gia lap tap du lieu 1000 can nha dua tren mo ta tu bai toan:
+    # x1: Dien tich (m2) [40 - 200]
+    # x2: So phong ngu [1 - 5]
+    # x3: Khoang cach toi trung tam (km) [1 - 30]
+    np.random.seed(42)
+    N = 1000
+    x1 = np.random.uniform(40, 200, N)
+    x2 = np.random.randint(1, 6, N)
+    x3 = np.random.uniform(1, 30, N)
+
+    # Gia nha thuc te (trieu VND) = 500 + 15*x1 + 100*x2 - 20*x3 + nhieu
+    noise = np.random.normal(0, 150, N)
+    y = 500 + 15 * x1 + 100 * x2 - 20 * x3 + noise
+    X = np.column_stack((x1, x2, x3))
+
+    print(f"\n[+] Da khoi tao tap du lieu {N} can nha voi 3 thuoc tinh dau vao:")
+    print("    - x1: Dien tich (m2)")
+    print("    - x2: So phong ngu")
+    print("    - x3: Khoang cach toi trung tam (km)\n")
+
+    # 2. Thu nghiem cac bac da thuc d khac nhau
+    degrees = [1, 2, 3, 4, 5]
+
+    print("1. DANH GIA SU OVERFITTING TREN TOAN BO TAP DU LIEU HUAN LUYEN:")
+    for d in degrees:
+        model = make_pipeline(PolynomialFeatures(degree=d), StandardScaler(), LinearRegression())
+        model.fit(X, y)
+        y_pred = model.predict(X)
+        mse = mean_squared_error(y, y_pred)
+        print(f" - Bac d = {d} | Train MSE = {mse:12.2f} | Train RMSE = {np.sqrt(mse):8.2f} trieu VND")
+
+    print("\n2. DANH GIA VOI 5-FOLD CROSS-VALIDATION (CHON BAC d TOI UU):")
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+
+    best_degree = None
+    min_cv_mse = float('inf')
+
+    for d in degrees:
+        val_mses = []
+        for train_idx, val_idx in kf.split(X):
+            X_train, y_train = X[train_idx], y[train_idx]
+            X_val, y_val = X[val_idx], y[val_idx]
+
+            model = make_pipeline(PolynomialFeatures(degree=d), StandardScaler(), LinearRegression())
+            model.fit(X_train, y_train)
+            y_val_pred = model.predict(X_val)
+            val_mses.append(mean_squared_error(y_val, y_val_pred))
+
+        avg_cv_mse = np.mean(val_mses)
+        print(f" - Bac d = {d} | Validation CV MSE = {avg_cv_mse:12.2f} | CV RMSE = {np.sqrt(avg_cv_mse):8.2f} trieu VND")
+
+        if avg_cv_mse < min_cv_mse:
+            min_cv_mse = avg_cv_mse
+            best_degree = d
+
+    print(f"\n=> KET LUAN: Bac d = {best_degree} cho Validation Cross-Validation MSE nho nhat ({min_cv_mse:.2f}),")
+    print("   giup mo hinh giu tinh tong quat tot nhat khi dinh gia cho can nha thu 1001!")
+
+if __name__ == "__main__":
+    main()
