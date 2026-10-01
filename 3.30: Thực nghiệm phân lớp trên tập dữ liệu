@@ -1,0 +1,55 @@
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.preprocessing import StandardScaler
+
+class CustomPerceptron:
+    def __init__(self, learning_rate=0.01, n_iters=1000):
+        self.lr = learning_rate
+        self.n_iters = n_iters
+        self.weights = None
+        self.bias = None
+
+    def fit(self, X, y):
+        n_samples, n_features = X.shape
+        self.weights = np.zeros(n_features)
+        self.bias = 0
+        y_ = np.where(y <= 0, -1, 1)
+
+        for _ in range(self.n_iters):
+            for idx, x_i in enumerate(X):
+                linear_output = np.dot(x_i, self.weights) + self.bias
+                if y_[idx] * linear_output <= 0:
+                    update = self.lr * y_[idx]
+                    self.weights += update * x_i
+                    self.bias += update
+
+    def predict(self, X):
+        linear_output = np.dot(X, self.weights) + self.bias
+        y_predicted = np.where(linear_output >= 0, 1, -1)
+        return np.where(y_predicted == 1, 1, 0)
+
+# 1. Tải dữ liệu ung thư vú (Breast Cancer)
+data = load_breast_cancer()
+X, y = data.data, data.target
+
+# 2. Chia tập Train/Test
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 3. Chuẩn hóa dữ liệu (Bước tối quan trọng để Perceptron hội tụ tốt)
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# 4. Huấn luyện mô hình
+model = CustomPerceptron(learning_rate=0.01, n_iters=1000)
+model.fit(X_train, y_train)
+
+# 5. Dự đoán và đánh giá
+predictions = model.predict(X_test)
+
+print(f"Accuracy:  {accuracy_score(y_test, predictions):.4f}")
+print(f"Precision: {precision_score(y_test, predictions):.4f}")
+print(f"Recall:    {recall_score(y_test, predictions):.4f}")
+print(f"F1-score:  {f1_score(y_test, predictions):.4f}")
