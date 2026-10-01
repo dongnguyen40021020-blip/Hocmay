@@ -1,0 +1,18 @@
+import numpy as np
+
+w = np.array([-2, 1, 0])
+x = np.array([2, 3, 1])
+y_true = 1
+
+wTx = np.dot(w, x)
+y_pred = 1 if wTx >= 0 else -1
+
+print(f"1. Mẫu bị phân lớp sai? {'Có' if y_true != y_pred else 'Không'} (w^T*x = {wTx}, dự đoán = {y_pred})")
+
+if y_true != y_pred:
+    eta = 1  # Learning rate mặc định
+    w_new = w + eta * y_true * x
+    print(f"2. Trọng số w sau cập nhật: {w_new}")
+    
+    wTx_new = np.dot(w_new, x)
+    print(f"3. w^T*x sau cập nhật: {wTx_new}")
