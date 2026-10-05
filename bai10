@@ -1,0 +1,113 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ---------------------------------------------------------
+# 1. CÁC HÀM VÀ LỚP ĐỐI TƯỢNG HỖ TRỢ
+# ---------------------------------------------------------
+def sigmoid(s):
+    return 1 / (1 + np.exp(-s))
+
+class LogisticRegressionSGD:
+    def __init__(self, eta=0.05, max_iter=10000, tol=1e-4):
+        self.eta = eta          # Tốc độ học (learning rate)
+        self.max_iter = max_iter # Số vòng lặp tối đa
+        self.tol = tol          # Ngưỡng dừng
+        self.w = None           # Trọng số
+        
+    def fit(self, X, y):
+        # X có kích thước (d, N) theo quy ước của blog ML Cơ Bản
+        N = X.shape[1]
+        # Thêm x_0 = 1 vào dòng đầu tiên để tính hệ số bias (w0)
+        X_bar = np.vstack((np.ones((1, N)), X))
+        d_bar = X_bar.shape[0]
+        
+        # Khởi tạo trọng số ngẫu nhiên
+        self.w = np.random.randn(d_bar, 1)
+        w_history = [self.w.copy()]
+        count = 0
+        
+        # Tối ưu hóa bằng Stochastic Gradient Descent (SGD)
+        for it in range(self.max_iter):
+            # Xáo trộn thứ tự dữ liệu ở mỗi epoch để tránh kẹt ở local minimum
+            mix_ids = np.random.permutation(N)
+            for i in mix_ids:
+                xi = X_bar[:, i].reshape(d_bar, 1)
+                yi = y[i]
+                
+                # Tính xác suất dự đoán (forward pass)
+                zi = sigmoid(np.dot(self.w.T, xi)[0, 0])
+                
+                # Cập nhật Gradient Descent cho 1 điểm dữ liệu (backward pass)
+                self.w = self.w + self.eta * (yi - zi) * xi
+                count += 1
+                
+                # Kiểm tra điều kiện hội tụ (sau mỗi 20 lần cập nhật)
+                if count % 20 == 0:
+                    if np.linalg.norm(self.w - w_history[-1]) < self.tol:
+                        return w_history
+                    w_history.append(self.w.copy())
+                    
+        return w_history
+        
+    def predict_proba(self, X):
+        N = X.shape[1]
+        X_bar = np.vstack((np.ones((1, N)), X))
+        return sigmoid(np.dot(self.w.T, X_bar))
+        
+    def predict(self, X, threshold=0.5):
+        return (self.predict_proba(X) >= threshold).astype(int)[0]
+
+
+# ---------------------------------------------------------
+# 2. KHAI BÁO DỮ LIỆU THỬ NGHIỆM
+# ---------------------------------------------------------
+np.random.seed(2) # Cố định seed để đảm bảo kết quả không đổi qua các lần chạy
+
+# Dữ liệu 1 chiều: Thời gian học (X) và Kết quả thi đỗ/trượt (y)
+X = np.array([[0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 1.75, 2.00, 2.25, 2.50, 
+              2.75, 3.00, 3.25, 3.50, 4.00, 4.25, 4.50, 4.75, 5.00, 5.50]])
+y = np.array([0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1])
+
+
+# ---------------------------------------------------------
+# 3. HUẤN LUYỆN MÔ HÌNH VÀ TRỰC QUAN HÓA
+# ---------------------------------------------------------
+# Khởi tạo và huấn luyện
+model = LogisticRegressionSGD(eta=0.05, max_iter=10000, tol=1e-4)
+w_history = model.fit(X, y)
+w_final = w_history[-1]
+
+print("Trọng số w tìm được:\n", w_final)
+
+# Trực quan hóa dữ liệu
+# Tách các điểm đỗ và trượt để vẽ biểu đồ
+X0 = X[0, np.where(y == 0)][0] 
+y0 = y[np.where(y == 0)]
+X1 = X[0, np.where(y == 1)][0]
+y1 = y[np.where(y == 1)]
+
+plt.figure(figsize=(10, 6))
+
+# Vẽ các điểm dữ liệu thực tế
+plt.plot(X0, y0, 'ro', markersize = 8, label="Trượt (Class 0)")
+plt.plot(X1, y1, 'bs', markersize = 8, label="Đỗ (Class 1)")
+
+# Vẽ đường cong Sigmoid biểu diễn xác suất
+xx = np.linspace(0, 6, 1000)
+w0 = w_final[0][0]
+w1 = w_final[1][0]
+yy = sigmoid(w0 + w1*xx)
+plt.plot(xx, yy, 'g-', linewidth = 2, label="Xác suất dự đoán (Sigmoid curve)")
+
+# Xác định và vẽ ngưỡng quyết định (threshold) 
+# Nơi xác suất = 0.5 tương đương w0 + w1*x = 0 => x = -w0/w1
+threshold_x = -w0/w1
+plt.plot(threshold_x, 0.5, 'y^', markersize = 10, label=f"Ngưỡng 0.5 (x ≈ {threshold_x:.2f})")
+
+plt.axis([-1, 7, -0.2, 1.2]) # Điều chỉnh trục để nhìn rõ hơn
+plt.xlabel("Số giờ học")
+plt.ylabel("Xác suất thi đỗ")
+plt.title("Logistic Regression - Dự đoán kết quả thi dựa trên số giờ học")
+plt.legend()
+plt.grid(True, linestyle='--', alpha=0.6)
+plt.show()
