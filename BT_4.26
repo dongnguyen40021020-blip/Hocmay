@@ -1,0 +1,66 @@
+import numpy as np
+
+class MultilayerNeuralNetwork:
+    def __init__(self, layers, task='classification'):
+        self.layers = layers  # Ví dụ: [input_dim, hidden1, hidden2, output_dim]
+        self.task = task
+        self.weights = []
+        self.biases = []
+        
+        # Khởi tạo trọng số He/Xavier
+        for i in range(len(layers) - 1):
+            w = np.random.randn(layers[i], layers[i+1]) * np.sqrt(2.0 / layers[i])
+            b = np.zeros((1, layers[i+1]))
+            self.weights.append(w)
+            self.biases.append(b)
+
+    def _relu(self, z): return np.maximum(0, z)
+    def _relu_deriv(self, z): return (z > 0).astype(float)
+    def _sigmoid(self, z): return 1.0 / (1.0 + np.exp(-np.clip(z, -15, 15)))
+
+    def forward(self, X):
+        activations = [X]
+        zs = []
+        curr = X
+        for i in range(len(self.weights) - 1):
+            z = np.dot(curr, self.weights[i]) + self.biases[i]
+            zs.append(z)
+            curr = self._relu(z)
+            activations.append(curr)
+            
+        # Tầng đầu ra
+        z_out = np.dot(curr, self.weights[-1]) + self.biases[-1]
+        zs.append(z_out)
+        out = self._sigmoid(z_out) if self.task == 'classification' else z_out
+        activations.append(out)
+        return activations, zs
+
+    def fit(self, X, y, epochs=1000, lr=0.05):
+        if y.ndim == 1: y = y.reshape(-1, 1)
+        for _ in range(epochs):
+            activations, zs = self.forward(X)
+            output = activations[-1]
+            delta = output - y  # Gradient tại đầu ra
+            
+            for l in reversed(range(len(self.weights))):
+                a_prev = activations[l]
+                grad_w = np.dot(a_prev.T, delta) / len(X)
+                grad_b = np.mean(delta, axis=0, keepdims=True)
+                
+                if l > 0:
+                    delta = np.dot(delta, self.weights[l].T) * self._relu_deriv(zs[l-1])
+                
+                self.weights[l] -= lr * grad_w
+                self.biases[l] -= lr * grad_b
+
+    def predict(self, X):
+        activations, _ = self.forward(X)
+        out = activations[-1]
+        return (out >= 0.5).astype(int) if self.task == 'classification' else out
+
+# Thử nghiệm với bài toán XOR phi tuyến
+X_xor = np.array([, [3]])
+y_xor = np.array([3])
+nn = MultilayerNeuralNetwork(layers=[1, 3, 4], task='classification')
+nn.fit(X_xor, y_xor, epochs=2000, lr=0.1)
+print("Dự đoán bài toán XOR của Neural Network:", nn.predict(X_xor).ravel())
