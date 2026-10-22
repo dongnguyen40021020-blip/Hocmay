@@ -1,0 +1,37 @@
+import numpy as np
+
+class CustomLogisticRegression:
+    def __init__(self, lr=0.1, n_epochs=500):
+        self.lr = lr
+        self.n_epochs = n_epochs
+
+    def _sigmoid(self, z):
+        return 1.0 / (1.0 + np.exp(-np.clip(z, -15, 15)))
+
+    def fit(self, X, y):
+        n_samples, n_features = X.shape
+        self.w = np.zeros(n_features)
+        self.b = 0.0
+        self.loss_history = []
+
+        for _ in range(self.n_epochs):
+            z = np.dot(X, self.w) + self.b
+            y_hat = self._sigmoid(z)
+            
+            # Loss Binary Cross-Entropy
+            loss = -np.mean(y * np.log(y_hat + 1e-15) + (1 - y) * np.log(1 - y_hat + 1e-15))
+            self.loss_history.append(loss)
+            
+            # Tính Gradients
+            dw = np.dot(X.T, (y_hat - y)) / n_samples
+            db = np.mean(y_hat - y)
+            
+            # Cập nhật tham số
+            self.w -= self.lr * dw
+            self.b -= self.lr * db
+
+    def predict_proba(self, X):
+        return self._sigmoid(np.dot(X, self.w) + self.b)
+
+    def predict(self, X):
+        return (self.predict_proba(X) >= 0.5).astype(int)
