@@ -1,0 +1,58 @@
+import pandas as pd
+import numpy as np
+
+# Bảng dữ liệu Mua máy tính
+data = {
+    'Tuoi': ['Tre', 'Tre', 'Trung nien', 'Gia', 'Gia', 'Gia', 'Trung nien', 'Tre', 'Tre', 'Gia', 'Tre', 'Trung nien', 'Trung nien', 'Gia'],
+    'Thu nhap': ['Cao', 'Cao', 'Cao', 'Trung binh', 'Thap', 'Thap', 'Thap', 'Trung binh', 'Thap', 'Trung binh', 'Trung binh', 'Trung binh', 'Cao', 'Trung binh'],
+    'Sinh vien': ['Khong', 'Khong', 'Khong', 'Khong', 'Co', 'Co', 'Co', 'Khong', 'Co', 'Co', 'Co', 'Khong', 'Co', 'Khong'],
+    'Tin dung': ['Tot', 'Xuat sac', 'Tot', 'Tot', 'Tot', 'Xuat sac', 'Xuat sac', 'Tot', 'Tot', 'Tot', 'Xuat sac', 'Xuat sac', 'Tot', 'Xuat sac'],
+    'Mua may tinh': ['Khong', 'Khong', 'Co', 'Co', 'Co', 'Khong', 'Co', 'Khong', 'Co', 'Co', 'Co', 'Co', 'Co', 'Khong']
+}
+df = pd.DataFrame(data)
+
+def entropy(y):
+    probs = y.value_counts(normalize=True)
+    return -sum(p * np.log2(p) for p in probs if p > 0)
+
+def information_gain(df, feature, target):
+    total_entropy = entropy(df[target])
+    vals = df[feature].unique()
+    weighted_entropy = sum(len(sub) / len(df) * entropy(sub[target]) for val in vals for sub in [df[df[feature] == val]])
+    return total_entropy - weighted_entropy
+
+def build_tree(df, target, features):
+    labels = df[target].unique()
+    if len(labels) == 1:
+        return labels
+    if len(features) == 0:
+        return df[target].mode()
+    
+    gains = [information_gain(df, f, target) for f in features]
+    best_f = features[np.argmax(gains)]
+    
+    tree = {best_f: {}}
+    remaining_f = [f for f in features if f != best_f]
+    
+    for val in df[best_f].unique():
+        sub_df = df[df[best_f] == val]
+        tree[best_f][val] = build_tree(sub_df, target, remaining_f)
+        
+    return tree
+
+def predict_id3(tree, sample):
+    if not isinstance(tree, dict):
+        return tree
+    feature = list(tree.keys())
+    val = sample.get(feature)
+    if val in tree[feature]:
+        return predict_id3(tree[feature][val], sample)
+    return 'Khong'
+
+# Chạy thử
+features = ['Tuoi', 'Thu nhap', 'Sinh vien', 'Tin dung']
+id3_tree = build_tree(df, 'Mua may tinh', features)
+print("Cây ID3 (Dictionary):", id3_tree)
+
+test_sample = {'Tuoi': 'Tre', 'Thu nhap': 'Trung binh', 'Sinh vien': 'Co', 'Tin dung': 'Tot'}
+print("Dự đoán cho mẫu mới:", predict_id3(id3_tree, test_sample))
